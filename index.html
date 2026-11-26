@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-<meta name="robots" content="noindex,nofollow">
 <script src="config.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -269,9 +268,9 @@ function biz(T,veh,dm){dm=dm||{};const el=document.getElementById('bizout');if(!
  h+=`<p class="note"><a href="${waLink(bizCat)}" target="_blank" rel="noopener">חסר עסק במפה? דווחו לנו בוואטסאפ</a> ונוסיף אותו אחרי בדיקה.</p>`;
  el.innerHTML=h;
  if(bizCat>=0&&GKEY&&GT[BZC[bizCat][0]]){const gd=document.getElementById('gpl');const lat=y/KY,lon=x/KX,myc=bizCat,mys=sel;gd.innerHTML='<p class="note">בודק גם בגוגל מפות…</p>';
-  gplaces(BZC[bizCat][0],lat,lon,r).then(L=>{if(myc!==bizCat||mys!==sel)return;if(!L){gd.innerHTML='';return}
+  gplaces(BZC[bizCat][0],lat,lon,r).then(L=>{if(myc!==bizCat||!gd.isConnected)return;if(!L){gd.innerHTML='';return}
    const d=o=>Math.hypot((o.location.longitude*KX)-x,(o.location.latitude*KY)-y);const L2=L.map(o=>({o,d:d(o)})).filter(z=>z.d<=r).sort((a,b)=>a.d-b.d);
-   gd.innerHTML=`<b>לפי Google: ${L2.length>=20?'20 או יותר':L2.length} ${BZC[bizCat][1]} ברדיוס</b>${L2.length>n?`<p class="note" style="margin:2px 0 6px">זה יותר ממה שמופיע אצלנו (${n}). המספר של Google שלם יותר, ולכן כדאי לשקול לפיו את התחרות.</p>`:''}<ul>${L2.slice(0,8).map(z=>`<li><span>${escB(z.o.displayName?z.o.displayName.text:'')}${z.o.primaryTypeDisplayName?' · '+escB(z.o.primaryTypeDisplayName.text):''}</span><span>${z.d<1000?Math.round(z.d/10)*10+' מ׳':(z.d/1000).toFixed(1)+' ק״מ'}</span></li>`).join('')}</ul><p class="note gattr">נתונים: Google</p>`})}
+   gd.innerHTML=`<b>לפי Google: ${L2.length>=20?'20 או יותר':L2.length} ${BZC[bizCat][1]} ברדיוס</b>${L2.length>n?`<p class="note" style="margin:2px 0 6px">זה יותר ממה שמופיע אצלנו (${n}). המספר של Google שלם יותר, ולכן כדאי לשקול לפיו את התחרות.</p>`:''}<ul>${L2.slice(0,8).map(z=>`<li><span>${escB(z.o.displayName?z.o.displayName.text:'')}${z.o.primaryTypeDisplayName?' · '+escB(z.o.primaryTypeDisplayName.text):''}</span><span>${z.d<1000?Math.round(z.d/10)*10+' מ׳':(z.d/1000).toFixed(1)+' ק״מ'}</span></li>`).join('')}</ul><p class="note gattr">נתונים: Google</p>`}).catch(()=>{if(gd.isConnected)gd.innerHTML=''})}
  const ab=document.getElementById('applyR');if(ab)ab.onclick=()=>{const b=[...document.querySelectorAll('#rad button')].find(z=>+z.dataset.r===+ab.dataset.r);if(b)b.click()}}
 
 // ---- colors
