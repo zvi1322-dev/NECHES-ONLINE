@@ -81,10 +81,7 @@ tr.go{cursor:pointer}tr.go:hover td{background:var(--paper)}
 .sres{list-style:none;margin:6px 0 0;padding:0}.sres button{width:100%;text-align:start;min-height:40px;padding:6px 10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15px Assistant;cursor:pointer}.sres button:hover,.sres button:focus-visible{border-color:var(--cob)}
 .row2{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:15px}.row2 input[type=range]{width:120px}
 .addr{font-size:15px;color:var(--mute);min-height:1.3em}
-
-.btn2{min-height:44px;padding:0 14px;font:600 16px Assistant;border:1px solid var(--ink);background:var(--bg);color:var(--ink);cursor:pointer}.btn2:hover{background:var(--ink);color:var(--bg)}
-.list ul.cats{columns:2;column-gap:24px}.list ul.cats li{break-inside:avoid}@media(max-width:600px){.list ul.cats{columns:1}}
-.warn{border:2px solid #c4452c;padding:10px 14px;margin:12px 0;font-size:15px}
+.dh{font-size:18px;margin:18px 0 8px;border-top:2px solid currentColor;padding-top:10px}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </head>
@@ -218,6 +215,8 @@ function planShare(p,x,y,r){// share of plan area inside circle
 let showPlans=true;
 // ---- עסקים באזור (OSM)
 const BZ=D.BZ||{C:[],B:[]};
+const NAVG=(()=>{const a=[0,0,0,0,0,0,0],w=[0,0,0,0,0,0,0];for(const p of P){if(!p.r||!p.pop)continue;for(const k of [0,1,2,3]){const v=p.r[k];if(v!=null){a[k]+=v*p.pop;w[k]+=p.pop}}const v6=p.r[6];if(v6!=null&&p.hh){a[6]+=v6*p.hh;w[6]+=p.hh}}return a.map((v,i)=>w[i]?v/w[i]:null)})();
+const DRV={kinder:['k','ילדים ובני נוער 0–19',0],toys:['k','ילדים ובני נוער 0–19',0],books:['k','ילדים ובני נוער 0–19',0],pharm:['o','בני 65 ומעלה',1],clinic:['o','בני 65 ומעלה',1],opt:['o','בני 65 ומעלה',1],bank:['w','שכר חציוני',3],jewel:['w','שכר חציוני',3],cloth:['w','שכר חציוני',3],shoes:['w','שכר חציוני',3],phone:['w','שכר חציוני',3],home:['w','שכר חציוני',3],fit:['w','שכר חציוני',3],cafe:['w','שכר חציוני',3],rest:['w','שכר חציוני',3],car:['v','משקי בית עם רכב',6],fuel:['v','משקי בית עם רכב',6]};
 const BZC=BZ.C,BZB=BZ.B.map(b=>({x:b[1]/1e5*KX,y:b[0]/1e5*KY,c:b[2],n:b[3],br:b[4]}));
 // add verified chain supermarkets (S) to category 0 when OSM lacks them
 for(const st of S){if(!BZB.some(b=>b.c===0&&Math.hypot(b.x-st.x,b.y-st.y)<80))BZB.push({x:st.x,y:st.y,c:0,n:st.b,br:st.c})}
@@ -230,7 +229,7 @@ function catchment(veh){if(veh==null)return null;
  if(veh>=30)return {r:1000,t:'חלק גדול ממשקי הבית בלי רכב. טווח השירות הסביר הוא כ-1 ק״מ, הליכה קצרה או נסיעה קצרה. חנות בגודל בינוני עם מעט חניה.'};
  if(veh>=15)return {r:2000,t:'לרוב המשפחות יש רכב. אפשר לשרת 2–3 ק״מ, וחניה הופכת לחשובה.'};
  return {r:3000,t:'כמעט לכל משק בית יש רכב. חנות גדולה עם חניה טובה יכולה למשוך לקוחות מ-3 עד 5 ק״מ.'}}
-function biz(T,veh){const el=document.getElementById('bizout');if(!el)return;const {x,y}=sel,r=R;
+function biz(T,veh,dm){dm=dm||{};const el=document.getElementById('bizout');if(!el)return;const {x,y}=sel,r=R;
  const inR=BZB.filter(b=>(b.x-x)**2+(b.y-y)**2<=r*r);const cnt=BZC.map(()=>0);for(const b of inR)cnt[b.c]++;
  const cm=catchment(veh);const allPer=T.pop?inR.length/T.pop*1e4:0,natAll=BZB.length/NATPOP*1e4,weak=T.pop>3000&&allPer<natAll*0.35;
  let h='';
@@ -240,6 +239,20 @@ function biz(T,veh){const el=document.getElementById('bizout');if(!el)return;con
   const verdict=weak?'המיפוי באזור חלקי, אי אפשר להסיק':!T.pop?'אין תושבים ברדיוס':n===0?'אין אף עסק כזה ברדיוס, לפי המיפוי':ratio<0.6?'פחות מהממוצע הארצי. ייתכן שיש כאן ביקוש שלא מקבל מענה':ratio<=1.5?'בערך כמו הממוצע הארצי':'יותר מהממוצע הארצי. התחרות כאן גבוהה';
   const near=BZB.filter(b=>b.c===bizCat).map(b=>({b,d:Math.hypot(b.x-x,b.y-y)})).sort((a,b)=>a.d-b.d).slice(0,6);
   h+=`<div class="kp" style="margin-top:12px"><div class="k main"><div class="t">${BZC[bizCat][1]} ברדיוס</div><div class="v">${n}</div><div class="s">${T.pop&&n?'עסק אחד לכל '+fmt(T.pop/n)+' תושבים':''}</div></div><div class="k"><div class="t">ביחס לממוצע הארצי</div><div class="v">${T.pop&&nat?Math.round(ratio*100)+'%':'—'}</div><div class="s">${verdict}</div></div></div>`;
+  {const key=BZC[bizCat][0],exp=T.pop*nat/1e4,gap=exp-n,F=window._FUT||{a:0,p:0},exp3=(T.pop+F.a)*nat/1e4,cap=veh!=null?T.hh*veh/100:null;
+   const src=(BZ.SRC&&BZ.SRC[bizCat])?'נתון רשמי: '+BZ.SRC[bizCat]:'לפי OpenStreetMap ורשימות סניפים רשמיות של רשתות. ייתכן שחסרים עסקים קטנים';
+   const d=DRV[key];let tgt=null;
+   if(d){const vv=d[0]==='k'?dm.kids:d[0]==='o'?dm.old:d[0]==='w'?dm.wage:veh!=null?100-veh:null;const nv=d[0]==='v'?(NAVG[6]!=null?100-NAVG[6]:null):NAVG[d[2]];
+    if(vv!=null&&nv){const rr=vv/nv;tgt={t:d[1],v:d[0]==='w'?fmt(vv)+' ₪':pct(vv),s:'ממוצע ארצי '+(d[0]==='w'?fmt(nv)+' ₪':pct(nv))+' · '+(rr>1.1?'גבוה מהממוצע, קהל היעד חזק כאן':rr<0.9?'נמוך מהממוצע':'קרוב לממוצע'),rr}}}
+   const k2=(t,v,s2)=>`<div class="k"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`;
+   h+=`<h3 class="dh">תמונת החלטה: ${BZC[bizCat][1]}</h3><div class="kp">`+
+    k2('תחרות',weak?'—':(gap>=1?'חסרים כ-'+fmt(gap):gap<=-1?'עודף של כ-'+fmt(-gap):'מאוזן'),weak?'המיפוי כאן חלקי':'לפי מספר התושבים היו מצופים כ-'+fmt(exp)+', ויש '+n)+
+    k2('קהל שבוי',cap!=null?fmt(cap):'—',cap!=null?'משקי בית בלי רכב ברדיוס. הם קונים קרוב לבית':'')+
+    (tgt?k2('קהל יעד: '+tgt.t,tgt.v,tgt.s):k2('קהל יעד','כל התושבים',fmt(T.pop)+' תושבים ברדיוס'))+
+    k2('העתיד',F.a>0?'+'+fmt(F.a)+' תושבים':'אין תוספת מאושרת',F.a>0?'עם הדירות שאושרו יהיה מקום לכ-'+fmt(exp3)+' עסקים כאלה (היום '+n+')':'לא אושרו דירות חדשות ברדיוס מאז 2021')+'</div>';
+   let bl='';const pos=(!weak&&gap>=1?1:0)+(tgt&&tgt.rr>1.1?1:0)+(F.a>T.pop*0.05?1:0),neg=(!weak&&gap<=-1?1:0)+(tgt&&tgt.rr<0.9?1:0);
+   bl=weak?'אי אפשר לקבוע לפי המיפוי כאן. כדאי לבדוק בשטח.':pos>=2&&!neg?'נראה מבטיח: יש פחות עסקים כאלה ממה שהאוכלוסייה מצדיקה, והנתונים תומכים.':neg>=2?'זהירות: התחרות גבוהה וקהל היעד חלש מהממוצע.':pos>neg?'נוטה לחיוב, אבל כדאי לבדוק את המתחרים הקרובים.':neg>pos?'נוטה לשלילה. כדאי לבדוק מיקום חלופי קרוב.':'תמונה מעורבת. ההחלטה תלויה במיקום המדויק ובחנות עצמה.';
+   h+=`<div class="box"><b>שורה תחתונה:</b> ${bl}<p class="note" style="margin:6px 0 0">זה כלל אצבע שמחושב מהנתונים, לא המלצה מקצועית. ${src}.</p></div>`}
   if(near.length)h+=`<div class="list"><b>הקרובים ביותר</b><ul>${near.map(o=>`<li><span>${escB(o.b.n||o.b.br||'ללא שם')}${o.b.br&&o.b.n&&o.b.br!==o.b.n?' · '+escB(o.b.br):''}</span><span>${o.d<1000?Math.round(o.d/10)*10+' מ׳':(o.d/1000).toFixed(1)+' ק״מ'}</span></li>`).join('')}</ul></div>`}
  else h+=`<p class="note">בחרו "סוג העסק שלך" בצד, ותראו כמה עסקים כאלה יש ברדיוס ואם יש פחות או יותר מהממוצע הארצי.</p>`;
  const top=cnt.map((c,i)=>({c,i})).filter(o=>o.c>0).sort((a,b)=>b.c-a.c);
@@ -365,14 +378,14 @@ function compute(){const {x,y}=sel,r=R,step=Math.max(20,r/55),r2=r*r;const hits=
  document.getElementById('extra').innerHTML=ex;
  const tb=document.querySelector('#tbl tbody');
  rows.sort((a,b)=>b.pop-a.pop);
- future(T,T.hh?T.pop/T.hh:0);biz(T,veh);
+ future(T,T.hh?T.pop/T.hh:0);biz(T,veh,{kids,old,acad,wage});
  tb.innerHTML=rows.filter(o=>o.p.cod===1&&o.p.pop).map(o=>{const r=o.p.r||[];return `<tr><td>${D.L[o.p.loc]}</td><td>${esc(saName(o.p))}</td><td class="n">${Math.round(o.f*100)}%</td><td class="n">${fmt(o.pop)}</td><td class="n">${pct(r[0])}</td><td class="n">${pct(r[1])}</td><td class="n">${pct(r[2])}</td><td class="n">${r[3]?fmt(r[3]):'—'}</td><td class="n">${pct(r[6])}</td><td>${LIFE[r[5]]||'—'}</td></tr>`}).join('')||'<tr><td colspan="10">אין אזורי מגורים ברדיוס.</td></tr>';
 }
 function future(T,hs){const {x,y}=sel,r=R;const seen=new Set(),L=[];
  for(let gx=Math.floor((x-r)/PGS);gx<=Math.floor((x+r)/PGS);gx++)for(let gy=Math.floor((y-r)/PGS);gy<=Math.floor((y+r)/PGS);gy++)for(const p of PG.get(gx+','+gy)||[]){if(seen.has(p))continue;seen.add(p);const f=planShare(p,x,y,r);if(f>0.01)L.push({p,f,u:p.u*f,c:p.c*f})}
  const sum=(fl)=>L.filter(fl).reduce((a,o)=>(a.u+=o.u,a.c+=o.c,a.n++,a),{u:0,c:0,n:0});
  const A=sum(o=>o.p.st==='A'&&!o.p.big),P=sum(o=>o.p.st==='P'&&!o.p.big),B=sum(o=>o.p.big);
- const hsz=hs||3.2;const addPop=A.u*hsz,addPopP=P.u*hsz;
+ const hsz=hs||3.2;const addPop=A.u*hsz,addPopP=P.u*hsz;window._FUT={a:addPop,p:addPopP};
  const k=(t,v,s2,main)=>`<div class="k${main?' main':''}"><div class="t">${t}</div><div class="v">${v}</div>${s2?`<div class="s">${s2}</div>`:''}</div>`;
  document.getElementById('fkp').innerHTML=
   k('דירות שאושרו מאז 2021',fmt(A.u),`${A.n===1?'תכנית אחת':A.n+' תכניות'} · כ-${fmt(addPop)} תושבים נוספים${T.pop?` (+${Math.round(addPop/T.pop*100)}%)`:''}`,true)+
