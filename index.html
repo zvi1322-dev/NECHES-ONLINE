@@ -216,11 +216,16 @@ let showPlans=true;
 // ---- עסקים באזור (OSM)
 const BZ=D.BZ||{C:[],B:[]};
 const GKEY=(window.NK_GKEY||'');
-const GT={super:['supermarket','grocery_store','convenience_store'],rest:['restaurant'],fast:['fast_food_restaurant','pizza_restaurant','hamburger_restaurant'],cafe:['cafe','coffee_shop'],bake:['bakery'],cloth:['clothing_store'],shoes:['shoe_store'],pharm:['pharmacy','drugstore'],hair:['hair_salon','beauty_salon','barber_shop'],phone:['cell_phone_store','electronics_store'],home:['furniture_store','home_goods_store'],hard:['hardware_store','home_improvement_store'],books:['book_store'],jewel:['jewelry_store'],flor:['florist','gift_shop'],meat:['butcher_shop'],pet:['pet_store','veterinary_care'],bank:['bank'],clinic:['doctor','dentist','medical_lab','physiotherapist'],kinder:['preschool','child_care_agency'],fit:['gym','fitness_center'],car:['car_repair','car_wash','auto_parts_store'],fuel:['gas_station'],mall:['shopping_mall']};
+const GT={super:['supermarket','grocery_store','convenience_store'],rest:['restaurant'],fast:['fast_food_restaurant','pizza_restaurant','hamburger_restaurant'],cafe:['cafe','coffee_shop'],bake:['bakery'],cloth:['clothing_store'],shoes:['shoe_store'],pharm:['pharmacy','drugstore'],hair:['hair_salon','beauty_salon','barber_shop'],phone:['cell_phone_store','electronics_store'],home:['furniture_store','home_goods_store'],hard:['hardware_store','home_improvement_store'],books:['book_store'],jewel:['jewelry_store'],flor:['florist','gift_shop'],meat:['butcher_shop'],pet:['pet_store','veterinary_care'],bank:['bank'],clinic:['doctor','dentist','medical_lab','physiotherapist'],kinder:['preschool','child_care_agency'],fit:['gym','fitness_center'],car:['car_repair','car_wash','auto_parts_store'],fuel:['gas_station'],mall:['shopping_mall'],opt:'חנות אופטיקה משקפיים',toys:'חנות צעצועים'};
 const GC=new Map();
 async function gplaces(key,lat,lon,r){const t=GT[key];if(!GKEY||!t)return null;const ck=key+'|'+lat.toFixed(4)+'|'+lon.toFixed(4)+'|'+r;if(GC.has(ck))return GC.get(ck);
- const res=await fetch('https://places.googleapis.com/v1/places:searchNearby',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.location,places.primaryTypeDisplayName,places.businessStatus'},body:JSON.stringify({includedTypes:t,maxResultCount:20,rankPreference:'DISTANCE',languageCode:'he',regionCode:'IL',locationRestriction:{circle:{center:{latitude:lat,longitude:lon},radius:Math.min(r,50000)}}})}).then(x=>x.json()).catch(()=>null);
- const out=res&&res.places?res.places.filter(p=>p.businessStatus!=='CLOSED_PERMANENTLY'):res&&!res.error?[]:null;GC.set(ck,out);return out}
+ const FM='places.id,places.displayName,places.formattedAddress,places.location,places.primaryTypeDisplayName,places.businessStatus';const H={'Content-Type':'application/json','X-Goog-Api-Key':GKEY,'X-Goog-FieldMask':FM};
+ const circle={center:{latitude:lat,longitude:lon},radius:Math.min(r,50000)};
+ const one=b=>fetch('https://places.googleapis.com/v1/places:'+(b.textQuery?'searchText':'searchNearby'),{method:'POST',headers:H,body:JSON.stringify(b)}).then(x=>x.json()).catch(()=>null);
+ const reqs=typeof t==='string'?[{textQuery:t,pageSize:20,languageCode:'he',regionCode:'IL',locationBias:{circle}}]:t.map(ty=>({includedTypes:[ty],maxResultCount:20,rankPreference:'DISTANCE',languageCode:'he',regionCode:'IL',locationRestriction:{circle}}));
+ const R2=await Promise.all(reqs.map(one));if(R2.every(x=>!x||x.error)){GC.set(ck,null);return null}
+ const seen=new Set(),out=[];let cap=false;for(const x of R2){if(!x||!x.places)continue;if(x.places.length>=20&&!reqs[0].textQuery)cap=true;for(const p of x.places){if(seen.has(p.id)||p.businessStatus==='CLOSED_PERMANENTLY')continue;seen.add(p.id);out.push(p)}}
+ out.cap=cap;GC.set(ck,out);return out}
 function waLink(cat){const lon=sel.x/KX,lat=sel.y/KY;const t='שלום, חסר עסק במפה של "מה יש ברדיוס".\nסוג העסק: '+(cat>=0?BZC[cat][1]:'')+'\nשם העסק:\nכתובת:\nמיקום הבדיקה: '+lat.toFixed(5)+','+lon.toFixed(5);return 'https://wa.me/972522278369?text='+encodeURIComponent(t)}
 const NAVG=(()=>{const a=[0,0,0,0,0,0,0],w=[0,0,0,0,0,0,0];for(const p of P){if(!p.r||!p.pop)continue;for(const k of [0,1,2,3]){const v=p.r[k];if(v!=null){a[k]+=v*p.pop;w[k]+=p.pop}}const v6=p.r[6];if(v6!=null&&p.hh){a[6]+=v6*p.hh;w[6]+=p.hh}}return a.map((v,i)=>w[i]?v/w[i]:null)})();
 const DRV={kinder:['k','ילדים ובני נוער 0–19',0],toys:['k','ילדים ובני נוער 0–19',0],books:['k','ילדים ובני נוער 0–19',0],pharm:['o','בני 65 ומעלה',1],clinic:['o','בני 65 ומעלה',1],opt:['o','בני 65 ומעלה',1],bank:['w','שכר חציוני',3],jewel:['w','שכר חציוני',3],cloth:['w','שכר חציוני',3],shoes:['w','שכר חציוני',3],phone:['w','שכר חציוני',3],home:['w','שכר חציוני',3],fit:['w','שכר חציוני',3],cafe:['w','שכר חציוני',3],rest:['w','שכר חציוני',3],car:['v','משקי בית עם רכב',6],fuel:['v','משקי בית עם רכב',6]};
@@ -236,17 +241,17 @@ function catchment(veh){if(veh==null)return null;
  if(veh>=30)return {r:1000,t:'חלק גדול ממשקי הבית בלי רכב. טווח השירות הסביר הוא כ-1 ק״מ, הליכה קצרה או נסיעה קצרה. חנות בגודל בינוני עם מעט חניה.'};
  if(veh>=15)return {r:2000,t:'לרוב המשפחות יש רכב. אפשר לשרת 2–3 ק״מ, וחניה הופכת לחשובה.'};
  return {r:3000,t:'כמעט לכל משק בית יש רכב. חנות גדולה עם חניה טובה יכולה למשוך לקוחות מ-3 עד 5 ק״מ.'}}
-let BIZARGS=null;const GM=new Map();
+let BIZARGS=null,CURG=[];const GM=new Map();
 const dKm=d=>d<1000?Math.round(d/10)*10+' מ׳':(d/1000).toFixed(1)+' ק״מ';
 const ntok=s=>String(s||'').toLowerCase().replace(/[^֐-׿a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!['סופר','מכולת','שופ','רופא','שיניים','ד','ר','the'].includes(w));
 function mergeKey(){return bizCat+'|'+Math.round(sel.x)+'|'+Math.round(sel.y)+'|'+R}
 function mergeList(cat,x,y,r,G){
  const ours=BZB.filter(b=>b.c===cat).map(b=>({n:b.n||b.br||'ללא שם',s:b.br&&b.n&&b.br!==b.n?b.br:'',x:b.x,y:b.y,d:Math.hypot(b.x-x,b.y-y)})).filter(o=>o.d<=r);
  if(!G)return {L:ours.sort((a,b)=>a.d-b.d),g:false,cap:false};
- const gl=G.map(o=>{const gx=o.location.longitude*KX,gy=o.location.latitude*KY;return {n:o.displayName?o.displayName.text:'',s:o.primaryTypeDisplayName?o.primaryTypeDisplayName.text:'',x:gx,y:gy,d:Math.hypot(gx-x,gy-y)}}).filter(o=>o.d<=r);
+ const gl=G.map(o=>{const gx=o.location.longitude*KX,gy=o.location.latitude*KY;return {n:o.displayName?o.displayName.text:'',s:o.primaryTypeDisplayName?o.primaryTypeDisplayName.text:'',x:gx,y:gy,d:Math.hypot(gx-x,gy-y),g:1}}).filter(o=>o.d<=r);
  const out=[...gl];
  for(const o of ours){const t=ntok(o.n);const dup=gl.some(g=>{const dd=Math.hypot(g.x-o.x,g.y-o.y);if(dd<25)return true;if(dd>120)return false;const gt=ntok(g.n);return t.some(w=>gt.includes(w))});if(!dup)out.push(o)}
- return {L:out.sort((a,b)=>a.d-b.d),g:true,cap:G.length>=20};
+ return {L:out.sort((a,b)=>a.d-b.d),g:true,cap:!!G.cap};
 }
 function catCard(n,lbl,pop,pending){const e=document.getElementById('catk');if(!e)return;if(bizCat<0){e.style.display='none';return}
  e.style.display='';e.innerHTML=`<div class="t">${lbl} ברדיוס</div><div class="v">${n}</div><div class="s">${pending?'בודק גם בגוגל מפות…':(pop&&parseInt(n)?'עסק אחד לכל '+fmt(pop/parseInt(n))+' תושבים · ':'')+'<a href="#bizout">לתמונת ההחלטה</a>'}</div>`}
@@ -256,34 +261,28 @@ function biz(T,veh,dm){dm=dm||{};BIZARGS=[T,veh,dm];const el=document.getElement
  const cmH=cm?`<div class="box"><b>טווח לקוחות מומלץ: כ-${cm.r>=1000?cm.r/1000+' ק״מ':cm.r+' מ׳'}</b><p class="note" style="margin:6px 0 8px">${cm.t} (לפי ${pct(veh)} משקי בית בלי רכב ברדיוס. זה כלל אצבע, לא חוק.)</p>${cm.r!==R?`<button type="button" class="btn2" id="applyR" data-r="${cm.r}">הצג רדיוס ${cm.r>=1000?cm.r/1000+' ק״מ':cm.r+' מ׳'}</button>`:''}</div>`:'';
  let h='';
  if(bizCat>=0){const key=BZC[bizCat][0],lbl=BZC[bizCat][1],useG=!!(GKEY&&GT[key]),mk=mergeKey(),G=GM.get(mk);const pending=useG&&G===undefined;
-  const M=mergeList(bizCat,x,y,r,G||null);const n=M.L.length,nTxt=(M.cap?'לפחות ':'')+n;
-  const weak=weakAll&&!M.g,cmpOk=!M.g&&!weak;
-  const per=T.pop?n/T.pop*1e4:0,nat=NATC[bizCat]/NATPOP*1e4,ratio=nat?per/nat:0;
-  const verdict=weak?'המיפוי באזור חלקי, אי אפשר להסיק':!T.pop?'אין תושבים ברדיוס':n===0?'אין אף עסק כזה ברדיוס':ratio<0.6?'פחות מהממוצע הארצי. ייתכן שיש כאן ביקוש שלא מקבל מענה':ratio<=1.5?'בערך כמו הממוצע הארצי':'יותר מהממוצע הארצי. התחרות כאן גבוהה';
-  catCard(nTxt,lbl,T.pop,pending);
-  h+=`<h3 class="dh" style="border-top:0;margin-top:0;padding-top:0">${lbl} ברדיוס</h3>`;
-  if(pending)h+=`<p class="note">בודק גם בגוגל מפות, כדי שהספירה תהיה שלמה…</p>`;
-  if(weak)h+=`<div class="warn"><b>המיפוי כאן חלקי.</b> אל תסיקו מכאן שאין תחרות. כדאי לבדוק בשטח.</div>`;
-  h+=`<div class="kp" style="margin-top:8px"><div class="k main"><div class="t">${lbl} ברדיוס</div><div class="v">${nTxt}</div><div class="s">${T.pop&&n?'עסק אחד לכל '+fmt(T.pop/n)+' תושבים':''}</div></div><div class="k"><div class="t">ביחס לממוצע הארצי</div><div class="v">${T.pop&&nat&&cmpOk?Math.round(ratio*100)+'%':'—'}</div><div class="s">${M.g?'לא משווים: הממוצע הארצי שלנו נספר ממאגר חלקי, וכאן הספירה כוללת את Google':verdict}</div></div></div>`;
-  {const exp=T.pop*nat/1e4,gap=exp-n,F=window._FUT||{a:0,p:0},exp3=(T.pop+F.a)*nat/1e4,cap=veh!=null?T.hh*veh/100:null;
-   const src=M.g?'הספירה משלבת את Google מפות עם המאגר שלנו, בלי כפילויות'+(M.cap?'. Google מחזיר עד 20 תוצאות, ולכן ייתכן שיש עוד':''):(BZ.SRC&&BZ.SRC[bizCat])?'נתון רשמי: '+BZ.SRC[bizCat]:'לפי OpenStreetMap. ייתכן שחסרים עסקים, בעיקר קטנים ועצמאיים';
-   const d=DRV[key];let tgt=null;
-   if(d){const vv=d[0]==='k'?dm.kids:d[0]==='o'?dm.old:d[0]==='w'?dm.wage:veh!=null?100-veh:null;const nv=d[0]==='v'?(NAVG[6]!=null?100-NAVG[6]:null):NAVG[d[2]];
-    if(vv!=null&&nv){const rr=vv/nv;tgt={t:d[1],v:d[0]==='w'?fmt(vv)+' ₪':pct(vv),s:'ממוצע ארצי '+(d[0]==='w'?fmt(nv)+' ₪':pct(nv))+' · '+(rr>1.1?'גבוה מהממוצע, קהל היעד חזק כאן':rr<0.9?'נמוך מהממוצע':'קרוב לממוצע'),rr}}}
-   const k2=(t,v,s2)=>`<div class="k"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`;
-   const gapOk=cmpOk;
-   h+=`<h3 class="dh">תמונת החלטה: ${lbl}</h3><div class="kp">`+
-    k2('תחרות',M.g?(T.pop&&n?'עסק לכל '+fmt(T.pop/n):n===0?'אין':'—'):!gapOk?'—':(gap>=1?'חסרים כ-'+fmt(gap):gap<=-1?'עודף של כ-'+fmt(-gap):'מאוזן'),M.g?nTxt+' עסקים ל-'+fmt(T.pop)+' תושבים ברדיוס. כדאי להשוות לאותו חיפוש במקום אחר':weak?'המיפוי כאן חלקי':'לפי מספר התושבים היו מצופים כ-'+fmt(exp)+', ויש '+nTxt)+
-    k2('קהל שבוי',cap!=null?fmt(cap):'—',cap!=null?'משקי בית בלי רכב ברדיוס. הם קונים קרוב לבית':'')+
-    (tgt?k2('קהל יעד: '+tgt.t,tgt.v,tgt.s):k2('קהל יעד','כל התושבים',fmt(T.pop)+' תושבים ברדיוס'))+
-    k2('העתיד',F.a>0?'+'+fmt(F.a)+' תושבים':'אין תוספת מאושרת',F.a>0?(weak||M.g?'גידול של כ-'+Math.round(F.a/Math.max(T.pop,1)*100)+'% באוכלוסייה, לפי הדירות שאושרו מאז 2021':'עם הדירות שאושרו יהיה מקום לכ-'+fmt(exp3)+' עסקים כאלה (היום '+nTxt+')'):'לא אושרו דירות חדשות ברדיוס מאז 2021')+'</div>';
-   const pos=(gapOk&&gap>=1?1:0)+(tgt&&tgt.rr>1.1?1:0)+(F.a>T.pop*0.05?1:0),neg=(gapOk&&gap<=-1?1:0)+(tgt&&tgt.rr<0.9?1:0);
-   const bl=weak?'אי אפשר לקבוע לפי המיפוי כאן. כדאי לבדוק בשטח.':pos>=2&&!neg?'נראה מבטיח: יש פחות עסקים כאלה ממה שהאוכלוסייה מצדיקה, והנתונים תומכים.':neg>=2?'זהירות: התחרות גבוהה וקהל היעד חלש מהממוצע.':pos>neg?'נוטה לחיוב, אבל כדאי לבדוק את המתחרים הקרובים.':neg>pos?'נוטה לשלילה. כדאי לבדוק מיקום חלופי קרוב.':'תמונה מעורבת. ההחלטה תלויה במיקום המדויק ובחנות עצמה.';
-   if(M.L.length)h+=`<div class="list"><b>הקרובים ביותר</b><ul>${M.L.slice(0,10).map(o=>`<li><span>${escB(o.n)}${o.s?' · '+escB(o.s):''}</span><span>${dKm(o.d)}</span></li>`).join('')}</ul>${M.L.length>10?`<p class="note">ועוד ${M.L.length-10}.</p>`:''}</div>`;
-   h+=`<div class="box"><b>שורה תחתונה:</b> ${bl}<p class="note" style="margin:6px 0 0">זה כלל אצבע שמחושב מהנתונים, לא המלצה מקצועית. ${src}.</p>${M.g?'<p class="note gattr" style="margin:4px 0 0">נתונים: Google</p>':''}</div>`}
+  const M=mergeList(bizCat,x,y,r,G||null);const n=M.L.length,nTxt=(M.cap?'יותר מ-':'')+n;
+  CURG=M.g?M.L.filter(o=>o.g):[];drawBiz();
+  catCard(nTxt,lbl,0,pending);
+  const F=window._FUT||{a:0,p:0},cap=veh!=null?T.hh*veh/100:null,near1=M.L[0];
+  const d=DRV[key];let tgt=null;
+  if(d){const vv=d[0]==='k'?dm.kids:d[0]==='o'?dm.old:d[0]==='w'?dm.wage:veh!=null?100-veh:null;const nv=d[0]==='v'?(NAVG[6]!=null?100-NAVG[6]:null):NAVG[d[2]];
+   if(vv!=null&&nv){const rr=vv/nv;tgt={t:d[1],v:d[0]==='w'?fmt(vv)+' ₪':pct(vv),s:'בממוצע בארץ '+(d[0]==='w'?fmt(nv)+' ₪':pct(nv))+' · '+(rr>1.1?'יותר מהממוצע':rr<0.9?'פחות מהממוצע':'כמו הממוצע')}}}
+  const k2=(t,v,s2,main)=>`<div class="k${main?' main':''}"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`;
+  h+=`<h3 class="dh" style="border-top:0;margin-top:0;padding-top:0">${lbl}: מה קורה ברדיוס</h3>`;
+  if(pending)h+=`<p class="note">בודק גם בגוגל מפות…</p>`;
+  else if(!M.g&&weakAll)h+=`<div class="warn"><b>המיפוי כאן חלקי.</b> ייתכן שיש עוד עסקים שלא מופיעים. כדאי לבדוק בשטח.</div>`;
+  h+=`<div class="kp">`+
+   k2('מתחרים ברדיוס',nTxt,n?'הקרוב ביותר: '+escB(near1.n)+', '+dKm(near1.d):'אין אף '+lbl+' ברדיוס',true)+
+   k2('תושבים ברדיוס',fmt(T.pop),fmt(T.hh)+' משקי בית')+
+   k2('קהל שבוי',cap!=null?fmt(cap):'—',cap!=null?'משקי בית בלי רכב. הם קונים קרוב לבית':'')+
+   (tgt?k2('קהל יעד: '+tgt.t,tgt.v,tgt.s):'')+
+   k2('העתיד',F.a>0?'+'+fmt(F.a)+' תושבים':'אין תוספת',F.a>0?'גידול של כ-'+Math.round(F.a/Math.max(T.pop,1)*100)+'% לפי דירות שאושרו מאז 2021':'לא אושרו דירות חדשות ברדיוס מאז 2021')+'</div>';
+  if(n)h+=`<div class="list"><b>הרשימה המלאה ברדיוס (${nTxt})</b><ul>${M.L.slice(0,40).map(o=>`<li><span>${escB(o.n)}${o.s?' · '+escB(o.s):''}</span><span>${dKm(o.d)}</span></li>`).join('')}</ul>${n>40?`<p class="note">ועוד ${n-40}.</p>`:''}</div>`;
+  h+=`<p class="note">${M.g?'לפי Google מפות והמאגר שלנו, בלי כפילויות.'+(M.cap?' באזורים צפופים Google מחזיר עד 20 תוצאות לכל סוג, ולכן ייתכן שיש עוד.':''):(BZ.SRC&&BZ.SRC[bizCat])?'נתון רשמי: '+BZ.SRC[bizCat]+'.':'לפי OpenStreetMap. ייתכן שחסרים עסקים.'} העסקים מסומנים גם על המפה.</p>${M.g?'<p class="note gattr">נתונים: Google</p>':''}`;
   h+=cmH;
   if(pending){const lat=y/KY,lon=x/KX;gplaces(key,lat,lon,r).then(L=>{GM.set(mk,L||null);if(mergeKey()===mk&&BIZARGS)biz(...BIZARGS)}).catch(()=>{GM.set(mk,null);if(mergeKey()===mk&&BIZARGS)biz(...BIZARGS)})}}
- else{catCard();h+=cmH;
+ else{CURG=[];catCard();h+=cmH;
   if(weakAll)h+=`<div class="warn"><b>המיפוי כאן חלקי.</b> ברדיוס הזה מופו הרבה פחות עסקים ממה שמצופה לפי מספר התושבים. אל תסיקו מכאן שאין תחרות.</div>`;
   h+=`<p class="note">בחרו "סוג העסק שלך" בצד, ותראו כמה עסקים כאלה יש ברדיוס, מה התחרות, מי הקהל ומה צפוי.</p>`;
   const top=cnt.map((c,i)=>({c,i})).filter(o=>o.c>0).sort((a,b)=>b.c-a.c);
@@ -340,7 +339,8 @@ function drawPlans(){plLayer.clearLayers();if(!showPlans||map.getZoom()<13)retur
 map.on('moveend',drawPlans);
 const bzLayer=L.layerGroup().addTo(map);
 function drawBiz(){bzLayer.clearLayers();if(bizCat<0||map.getZoom()<12)return;const b=map.getBounds(),x0=b.getWest()*KX,x1=b.getEast()*KX,y0=b.getSouth()*KY,y1=b.getNorth()*KY;
- for(const o of BZB){if(o.c!==bizCat||o.x<x0||o.x>x1||o.y<y0||o.y>y1)continue;L.circleMarker(ll(o.x,o.y),{radius:6,weight:2,color:'#fff',fillColor:'#7a1f3d',fillOpacity:1}).bindTooltip(escB(o.n||o.br||BZC[o.c][1]),{direction:'top'}).addTo(bzLayer)}}
+ for(const o of BZB){if(o.c!==bizCat||o.x<x0||o.x>x1||o.y<y0||o.y>y1)continue;L.circleMarker(ll(o.x,o.y),{radius:6,weight:2,color:'#fff',fillColor:'#7a1f3d',fillOpacity:1}).bindTooltip(escB(o.n||o.br||BZC[o.c][1]),{direction:'top'}).addTo(bzLayer)}
+ for(const o of CURG)L.circleMarker(ll(o.x,o.y),{radius:6,weight:2,color:'#fff',fillColor:'#7a1f3d',fillOpacity:1}).bindTooltip(escB(o.n),{direction:'top'}).addTo(bzLayer)}
 map.on('moveend',drawBiz);
 let sel=null,R=1000,circ=null,mark=null;
 function draw(){if(!sel)return;const c=ll(sel.x,sel.y);if(!circ){circ=L.circle(c,{radius:R,color:'#1f3fff',weight:2.5,fillOpacity:0.06,interactive:false}).addTo(map);mark=L.circleMarker(c,{radius:6,color:'#111',weight:2,fillColor:'#ffd400',fillOpacity:1}).addTo(map)}else{circ.setLatLng(c).setRadius(R);mark.setLatLng(c)}}
