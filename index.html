@@ -208,10 +208,11 @@ const PL=(D.PL||[]).map(a=>{const rings=[];let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12
  if(!rings.length)return null;
  return {num:a[0],name:a[1],st:a[2],y:a[3],u:a[4],c:a[5],e:a[6],dun:a[7],town:a[8],rings,bb:[x0,y0,x1,y1],big:a[7]>2000}}).filter(Boolean);
 const PG=new Map(),PGS=2000;for(const p of PL){for(let gx=Math.floor(p.bb[0]/PGS);gx<=Math.floor(p.bb[2]/PGS);gx++)for(let gy=Math.floor(p.bb[1]/PGS);gy<=Math.floor(p.bb[3]/PGS);gy++){const k=gx+','+gy;(PG.get(k)||PG.set(k,[]).get(k)).push(p)}}
+const KCOR=y=>Math.cos(y/KY*Math.PI/180)/Math.cos(31.5*Math.PI/180);
 function planShare(p,x,y,r){// share of plan area inside circle
- const w=p.bb[2]-p.bb[0],h=p.bb[3]-p.bb[1];if(Math.hypot(Math.max(p.bb[0]-x,0,x-p.bb[2]),Math.max(p.bb[1]-y,0,y-p.bb[3]))>r)return 0;
- const n=24;let inP=0,inC=0;for(let i=0;i<n;i++)for(let j=0;j<n;j++){const px=p.bb[0]+(i+.5)*w/n,py=p.bb[1]+(j+.5)*h/n;if(!pip(p,px,py))continue;inP++;if((px-x)**2+(py-y)**2<=r*r)inC++}
- if(!inP){const cx=(p.bb[0]+p.bb[2])/2,cy=(p.bb[1]+p.bb[3])/2;return (cx-x)**2+(cy-y)**2<=r*r?1:0}return inC/inP}
+ const w=p.bb[2]-p.bb[0],h=p.bb[3]-p.bb[1];if(Math.hypot(KCOR(y)*Math.max(p.bb[0]-x,0,x-p.bb[2]),Math.max(p.bb[1]-y,0,y-p.bb[3]))>r)return 0;
+ const n=24;let inP=0,inC=0;for(let i=0;i<n;i++)for(let j=0;j<n;j++){const px=p.bb[0]+(i+.5)*w/n,py=p.bb[1]+(j+.5)*h/n;if(!pip(p,px,py))continue;inP++;if(((px-x)*KCOR(y))**2+(py-y)**2<=r*r)inC++}
+ if(!inP){const cx=(p.bb[0]+p.bb[2])/2,cy=(p.bb[1]+p.bb[3])/2;return ((cx-x)*KCOR(y))**2+(cy-y)**2<=r*r?1:0}return inC/inP}
 let showPlans=true;
 // ---- עסקים באזור (OSM)
 const BZ=D.BZ||{C:[],B:[]};
@@ -246,17 +247,17 @@ const dKm=d=>d<1000?Math.round(d/10)*10+' מ׳':(d/1000).toFixed(1)+' ק״מ';
 const ntok=s=>String(s||'').toLowerCase().replace(/[^֐-׿a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>1&&!['סופר','מכולת','שופ','רופא','שיניים','ד','ר','the'].includes(w));
 function mergeKey(){return bizCat+'|'+Math.round(sel.x)+'|'+Math.round(sel.y)+'|'+R}
 function mergeList(cat,x,y,r,G){
- const ours=BZB.filter(b=>b.c===cat).map(b=>({n:b.n||b.br||'ללא שם',s:b.br&&b.n&&b.br!==b.n?b.br:'',x:b.x,y:b.y,d:Math.hypot(b.x-x,b.y-y)})).filter(o=>o.d<=r);
+ const ours=BZB.filter(b=>b.c===cat).map(b=>({n:b.n||b.br||'ללא שם',s:b.br&&b.n&&b.br!==b.n?b.br:'',x:b.x,y:b.y,d:Math.hypot((b.x-x)*KCOR(y),b.y-y)})).filter(o=>o.d<=r);
  if(!G)return {L:ours.sort((a,b)=>a.d-b.d),g:false,cap:false};
- const gl=G.map(o=>{const gx=o.location.longitude*KX,gy=o.location.latitude*KY;return {n:o.displayName?o.displayName.text:'',s:o.primaryTypeDisplayName?o.primaryTypeDisplayName.text:'',x:gx,y:gy,d:Math.hypot(gx-x,gy-y),g:1}}).filter(o=>o.d<=r);
+ const gl=G.map(o=>{const gx=o.location.longitude*KX,gy=o.location.latitude*KY;return {n:o.displayName?o.displayName.text:'',s:o.primaryTypeDisplayName?o.primaryTypeDisplayName.text:'',x:gx,y:gy,d:Math.hypot((gx-x)*KCOR(y),gy-y),g:1}}).filter(o=>o.d<=r);
  const out=[...gl];
- for(const o of ours){const t=ntok(o.n+' '+o.s);const dup=gl.some(g=>{const dd=Math.hypot(g.x-o.x,g.y-o.y);if(dd<25)return true;if(dd>400)return false;const gt=ntok(g.n);const m=t.filter(w=>gt.includes(w)).length;return dd<=120?m>=1:m>=2});if(!dup)out.push(o)}
+ for(const o of ours){const t=ntok(o.n+' '+o.s);const dup=gl.some(g=>{const dd=Math.hypot((g.x-o.x)*KCOR(y),g.y-o.y);if(dd<25)return true;if(dd>400)return false;const gt=ntok(g.n);const m=t.filter(w=>gt.includes(w)).length;return dd<=120?m>=1:m>=2});if(!dup)out.push(o)}
  return {L:out.sort((a,b)=>a.d-b.d),g:true,cap:!!G.cap};
 }
 function catCard(n,lbl,pop,pending){const e=document.getElementById('catk');if(!e)return;if(bizCat<0){e.style.display='none';return}
  e.style.display='';e.innerHTML=`<div class="t">${lbl} ברדיוס</div><div class="v">${n}</div><div class="s">${pending?'בודק גם בגוגל מפות…':(pop&&parseInt(n)?'עסק אחד לכל '+fmt(pop/parseInt(n))+' תושבים · ':'')+'<a href="#bizout">לתמונת ההחלטה</a>'}</div>`}
 function biz(T,veh,dm){dm=dm||{};BIZARGS=[T,veh,dm];const el=document.getElementById('bizout');if(!el)return;const {x,y}=sel,r=R;
- const inR=BZB.filter(b=>(b.x-x)**2+(b.y-y)**2<=r*r);const cnt=BZC.map(()=>0);for(const b of inR)cnt[b.c]++;
+ const kk=KCOR(y);const inR=BZB.filter(b=>((b.x-x)*kk)**2+(b.y-y)**2<=r*r);const cnt=BZC.map(()=>0);for(const b of inR)cnt[b.c]++;
  const cm=catchment(veh);const allPer=T.pop?inR.length/T.pop*1e4:0,natAll=BZB.length/NATPOP*1e4,weakAll=T.pop>3000&&allPer<natAll*0.35;
  const cmH=cm?`<div class="box"><b>טווח לקוחות מומלץ: כ-${cm.r>=1000?cm.r/1000+' ק״מ':cm.r+' מ׳'}</b><p class="note" style="margin:6px 0 8px">${cm.t} (לפי ${pct(veh)} משקי בית בלי רכב ברדיוס. זה כלל אצבע, לא חוק.)</p>${cm.r!==R?`<button type="button" class="btn2" id="applyR" data-r="${cm.r}">הצג רדיוס ${cm.r>=1000?cm.r/1000+' ק״מ':cm.r+' מ׳'}</button>`:''}</div>`:'';
  let h='';
@@ -307,7 +308,7 @@ const LAYERS=[
 const layerSel=document.getElementById('layer');layerSel.innerHTML=LAYERS.map((l,i)=>`<option value="${i}">${l.t}</option>`).join('');
 let layer=LAYERS[0];
 function cls(v,b){if(v==null||isNaN(v))return -1;let i=0;while(i<b.length&&v>=b[i])i++;return i}
-function fillOf(p){if(p.cod!==1||!p.pop)return null;const v=layer.v(p);if(layer.cat)return v&&LIFEC[v]?LIFEC[v]:null;const c=cls(v,layer.b);return c<0?null:COL.seq[c]}
+function fillOf(p){if(!p.pop)return null;const v=layer.v(p);if(layer.cat)return v&&LIFEC[v]?LIFEC[v]:null;const c=cls(v,layer.b);return c<0?null:COL.seq[c]}
 function legend(){const L=document.getElementById('legend');
  if(layer.cat){L.innerHTML=Object.entries(LIFE).map(([k,t])=>`<span><i style="background:${LIFEC[k]}"></i>${t}</span>`).join('')+'<span><i style="background:var(--paper)"></i>לא מגורים / אין נתון</span>';return}
  const b=layer.b,f=layer.f;const lab=[`עד ${f(b[0])}`,`${f(b[0])}–${f(b[1])}`,`${f(b[1])}–${f(b[2])}`,`${f(b[2])}–${f(b[3])}`,`${f(b[3])} ומעלה`];
@@ -315,7 +316,8 @@ function legend(){const L=document.getElementById('legend');
 
 // ---- map (Leaflet + CARTO/OSM)
 const NB=D.NB||{},RD=D.RD||{};
-const saName=p=>{const k=p.loc*10000+p.stat;return NB[k]||(RD[k]?'סביב רח׳ '+RD[k]:'אזור '+p.stat)};
+const BADNB=new Set([61000117,61000121,61000122,61000713,61000721,66000513]);
+const saName=p=>{const k=p.loc*10000+p.stat;const n=NB[k];const city=(D.L[p.loc]||'').trim();const ok=n&&/[א-ת]/.test(n)&&n!==city&&!BADNB.has(k);return ok?n:(RD[k]?'סביב רח׳ '+RD[k]:'אזור '+p.stat)};
 
 // neighbourhood index for search
 const NBI={};for(const p of P){const k=p.loc*10000+p.stat;const n=NB[k];if(!n||p.cod!==1)continue;const key=n+' · '+(D.L[p.loc]||'').trim();(NBI[key]||(NBI[key]=[])).push(p)}
@@ -375,18 +377,23 @@ async function search(){const v=q.value.trim();sres.innerHTML='';if(!v)return;
 document.getElementById('go').onclick=search;q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();search()}});
 function pick(x,y,keep){sel={x,y};const a=document.getElementById('addr');if(a)a.textContent='';compute();draw();if(!keep)fitR(x,y);else if(!map.getBounds().contains(circ.getBounds()))fitR(x,y);reverse(x,y);hash()}
 
-function compute(){const {x,y}=sel,r=R,step=Math.max(20,r/55),r2=r*r;const hits=new Map();
- for(let gx=x-r+step/2;gx<x+r;gx+=step)for(let gy=y-r+step/2;gy<y+r;gy+=step){const dx=gx-x,dy=gy-y;if(dx*dx+dy*dy>r2)continue;const p=at(gx,gy);if(p)hits.set(p,(hits.get(p)||0)+1)}
- // small polygons: centroid rule
- const near=new Set();for(let gx=Math.floor((x-r)/GS);gx<=Math.floor((x+r)/GS);gx++)for(let gy=Math.floor((y-r)/GS);gy<=Math.floor((y+r)/GS);gy++)for(const p of G.get(gx+','+gy)||[])near.add(p);
- const rows=[];
- for(const p of near){let f;if(p.area<6*step*step){const dx=p.cx-x,dy=p.cy-y;f=dx*dx+dy*dy<=r2?1:0}else f=Math.min(1,(hits.get(p)||0)*step*step/p.area);
+function compute(){const {x,y}=sel,r=R,r2=r*r;const kc=KCOR(y),rx=r/kc,step=Math.max(10,r/110);
+ const near=new Set();for(let gx=Math.floor((x-rx)/GS);gx<=Math.floor((x+rx)/GS);gx++)for(let gy=Math.floor((y-r)/GS);gy<=Math.floor((y+r)/GS);gy++)for(const p of G.get(gx+','+gy)||[])near.add(p);
+ const rows=[];const inC=(px,py)=>{const dx=(px-x)*kc,dy=py-y;return dx*dx+dy*dy<=r2};
+ for(const p of near){if(!p.pop&&!p.r)continue;const b=p.bb;const dX=Math.max(b[0]-x,0,x-b[2])*kc,dY=Math.max(b[1]-y,0,y-b[3]);if(dX*dX+dY*dY>r2)continue;
+  let f;const w=b[2]-b[0],h=b[3]-b[1];
+  if(Math.max(w,h)/step<=60){const n=Math.max(8,Math.ceil(Math.max(w,h)/step)),sx=w/n,sy=h/n;let nA=0,nI=0;
+   for(let a=0;a<n;a++)for(let c=0;c<n;c++){const px=b[0]+(a+.5)*sx,py=b[1]+(c+.5)*sy;if(!pip(p,px,py))continue;nA++;if(inC(px,py))nI++}
+   f=nA?nI/nA:(inC(p.cx,p.cy)?1:0)}
+  else{const x0=Math.max(b[0],x-rx),x1=Math.min(b[2],x+rx),y0=Math.max(b[1],y-r),y1=Math.min(b[3],y+r);let cnt=0;
+   for(let px=x0+step/2;px<x1;px+=step)for(let py=y0+step/2;py<y1;py+=step)if(inC(px,py)&&pip(p,px,py))cnt++;
+   f=Math.min(1,cnt*step*step/p.area)}
   if(f>0.005)rows.push({p,f,pop:p.pop*f,hh:p.hh*f})}
- const T=rows.reduce((a,o)=>(a.pop+=o.pop,a.hh+=o.hh,a),{pop:0,hh:0});
+ const T=rows.reduce((a,o)=>(a.pop+=o.pop,a.hh+=o.hh,o.hh>0&&(a.popH+=o.pop),a),{pop:0,hh:0,popH:0});
  const wavg=(k,w)=>{let s=0,n=0;for(const o of rows){const v=o.p.r&&o.p.r[k];if(v==null)continue;s+=v*o[w];n+=o[w]}return n?s/n:null};
  const life={};for(const o of rows){const c=o.p.r&&o.p.r[5];if(c)life[c]=(life[c]||0)+o.hh}
  const here=at(x,y);const locNames={};for(const o of rows){if(o.pop<1)continue;const n=D.L[o.p.loc];locNames[n]=(locNames[n]||0)+o.pop}
- const st=S.map(s=>({s,d:Math.hypot(s.x-x,s.y-y)})).sort((a,b)=>a.d-b.d);const inR=st.filter(o=>o.d<=r);
+ const st=S.map(s=>({s,d:Math.hypot((s.x-x)*kc,s.y-y)})).sort((a,b)=>a.d-b.d);const inR=st.filter(o=>o.d<=r);
  const COV={2610:1,6100:1,1309:1,3780:1};let cp=0;for(const o of rows)if(COV[o.p.loc])cp+=o.pop;const covered=S.some(s=>Math.hypot(s.x-x,s.y-y)<15000)&&cp>0;const full=covered&&cp>=0.97*T.pop;
  const covNames=[...new Set(rows.filter(o=>COV[o.p.loc]&&o.pop>1).map(o=>D.L[o.p.loc]))].join(', ');
  // where
@@ -396,7 +403,7 @@ function compute(){const {x,y}=sel,r=R,step=Math.max(20,r/55),r2=r*r;const hits=
  const k=(t,v,s,main)=>`<div class="k${main?' main':''}"><div class="t">${t}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}</div>`;
  document.getElementById('kp').innerHTML=
   `<div class="k main" id="catk" style="display:none"></div>`+
-  k('תושבים ברדיוס (2022)',fmt(T.pop),`${fmt(T.hh)} משקי בית · ${T.hh?(T.pop/T.hh).toFixed(1):'—'} נפשות למשק בית`,true)+
+  k('תושבים ברדיוס (2022)',fmt(T.pop),`${fmt(T.hh)} משקי בית · ${T.hh?(T.popH/T.hh).toFixed(1):'—'} נפשות למשק בית`,true)+
   k('משקי בית בלי רכב',pct(veh),veh!=null&&T.hh?'כ-'+fmt(T.hh*veh/100)+' משקי בית':'')+
   k('ילדים ובני נוער 0–19',pct(kids),kids!=null?'כ-'+fmt(T.pop*kids/100)+' ילדים':'')+
   k('בני 65 ומעלה',pct(old),'')+
@@ -412,7 +419,7 @@ function compute(){const {x,y}=sel,r=R,step=Math.max(20,r/55),r2=r*r;const hits=
  const tb=document.querySelector('#tbl tbody');
  rows.sort((a,b)=>b.pop-a.pop);
  future(T,T.hh?T.pop/T.hh:0);biz(T,veh,{kids,old,acad,wage});
- tb.innerHTML=rows.filter(o=>o.p.cod===1&&o.p.pop).map(o=>{const r=o.p.r||[];return `<tr><td>${D.L[o.p.loc]}</td><td>${esc(saName(o.p))}</td><td class="n">${Math.round(o.f*100)}%</td><td class="n">${fmt(o.pop)}</td><td class="n">${pct(r[0])}</td><td class="n">${pct(r[1])}</td><td class="n">${pct(r[2])}</td><td class="n">${r[3]?fmt(r[3]):'—'}</td><td class="n">${pct(r[6])}</td><td>${LIFE[r[5]]||'—'}</td></tr>`}).join('')||'<tr><td colspan="10">אין אזורי מגורים ברדיוס.</td></tr>';
+ tb.innerHTML=rows.filter(o=>o.p.pop>0).map(o=>{const r=o.p.r||[];return `<tr><td>${D.L[o.p.loc]}</td><td>${esc(saName(o.p))}</td><td class="n">${Math.round(o.f*100)}%</td><td class="n">${fmt(o.pop)}</td><td class="n">${pct(r[0])}</td><td class="n">${pct(r[1])}</td><td class="n">${pct(r[2])}</td><td class="n">${r[3]?fmt(r[3]):'—'}</td><td class="n">${pct(r[6])}</td><td>${LIFE[r[5]]||'—'}</td></tr>`}).join('')||'<tr><td colspan="10">אין אזורי מגורים ברדיוס.</td></tr>';
 }
 function future(T,hs){const {x,y}=sel,r=R;const seen=new Set(),L=[];
  for(let gx=Math.floor((x-r)/PGS);gx<=Math.floor((x+r)/PGS);gx++)for(let gy=Math.floor((y-r)/PGS);gy<=Math.floor((y+r)/PGS);gy++)for(const p of PG.get(gx+','+gy)||[]){if(seen.has(p))continue;seen.add(p);const f=planShare(p,x,y,r);if(f>0.01)L.push({p,f,u:p.u*f,c:p.c*f})}
@@ -437,7 +444,7 @@ function hash(){if(!sel)return;const lon=sel.x/KX,lat=sel.y/KY;history.replaceSt
 function hash(){if(!sel)return;const lon=sel.x/KX,lat=sel.y/KY;try{history.replaceState(null,'','#'+lat.toFixed(5)+','+lon.toFixed(5)+','+R)}catch(e){}}
 // ---- init
 legend();recolor();
-const m=location.hash.match(/^#(3\d\.\d+),(3\d\.\d+),(\d+)$/);
+const m=location.hash.match(/^#(\d{2}\.\d+),(\d{2}\.\d+),(\d+)$/);
 if(m){R=+m[3];for(const x of radEl.children)x.setAttribute('aria-pressed',+x.dataset.r===R);pick(+m[2]*KX,+m[1]*KY)}
 })();
 </script>
