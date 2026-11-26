@@ -250,7 +250,7 @@ function mergeList(cat,x,y,r,G){
  if(!G)return {L:ours.sort((a,b)=>a.d-b.d),g:false,cap:false};
  const gl=G.map(o=>{const gx=o.location.longitude*KX,gy=o.location.latitude*KY;return {n:o.displayName?o.displayName.text:'',s:o.primaryTypeDisplayName?o.primaryTypeDisplayName.text:'',x:gx,y:gy,d:Math.hypot(gx-x,gy-y),g:1}}).filter(o=>o.d<=r);
  const out=[...gl];
- for(const o of ours){const t=ntok(o.n);const dup=gl.some(g=>{const dd=Math.hypot(g.x-o.x,g.y-o.y);if(dd<25)return true;if(dd>400)return false;const gt=ntok(g.n);const m=t.filter(w=>gt.includes(w)).length;return dd<=120?m>=1:m>=2});if(!dup)out.push(o)}
+ for(const o of ours){const t=ntok(o.n+' '+o.s);const dup=gl.some(g=>{const dd=Math.hypot(g.x-o.x,g.y-o.y);if(dd<25)return true;if(dd>400)return false;const gt=ntok(g.n);const m=t.filter(w=>gt.includes(w)).length;return dd<=120?m>=1:m>=2});if(!dup)out.push(o)}
  return {L:out.sort((a,b)=>a.d-b.d),g:true,cap:!!G.cap};
 }
 function catCard(n,lbl,pop,pending){const e=document.getElementById('catk');if(!e)return;if(bizCat<0){e.style.display='none';return}
